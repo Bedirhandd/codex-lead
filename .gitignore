@@ -1,0 +1,7 @@
+.project-memory/
+AGENTS.md
+
+tmp/
+tmp/*
+docs/
+docs/*
