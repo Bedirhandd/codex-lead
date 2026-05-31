@@ -1,0 +1,20 @@
+{
+  "name": "@codex-lead/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "bin": {
+    "codex-lead": "./dist/bin/codex-lead.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "default": "./dist/cli.js"
+    }
+  },
+  "dependencies": {
+    "@codex-lead/core": "0.0.0"
+  }
+}

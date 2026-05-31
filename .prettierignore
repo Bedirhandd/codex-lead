@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+*.tsbuildinfo
+
+.husky/_/
+.project-memory/
+AGENTS.md
+docs/
+tmp/

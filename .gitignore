@@ -5,3 +5,9 @@ tmp/
 tmp/*
 docs/
 docs/*
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.husky/_/
