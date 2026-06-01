@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/cli.js",
   "types": "./dist/cli.d.ts",
+  "files": [
+    "dist/"
+  ],
   "bin": {
     "codex-lead": "./dist/bin/codex-lead.js"
   },
