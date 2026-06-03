@@ -4,6 +4,7 @@
   let selectedThread: ThreadId = 'lead';
   let chatInput = '';
   let highlightedCommandIndex = 0;
+  let isRunSelectorOpen = false;
 
   const activeWorkers = [
     {
@@ -56,6 +57,65 @@
     }
   ];
 
+  const runs = [
+    {
+      id: 'run_20260203_094112',
+      title: 'Web UI orchestration cockpit',
+      status: 'active',
+      updatedAt: '09:52',
+      summary: 'Lead Agent is waiting for spawned worker threads to finish.'
+    },
+    {
+      id: 'run_20260202_181504',
+      title: 'Initial MVP scope interview',
+      status: 'completed',
+      updatedAt: 'Yesterday',
+      summary: 'Created goal.md, scope.md, and initial acceptance criteria.'
+    },
+    {
+      id: 'run_20260201_233840',
+      title: 'Review loop prototype',
+      status: 'paused',
+      updatedAt: '2 days ago',
+      summary: 'Stopped after first dummy review worker report.'
+    },
+    {
+      id: 'run_20260131_151227',
+      title: 'Worker output audit',
+      status: 'failed',
+      updatedAt: '3 days ago',
+      summary: 'Review Worker failed while parsing raw-review.txt.'
+    },
+    {
+      id: 'run_20260130_104903',
+      title: 'Plan worker prompt refinement',
+      status: 'completed',
+      updatedAt: '4 days ago',
+      summary: 'Improved plan.md structure and worker prompt boundaries.'
+    },
+    {
+      id: 'run_20260126_172019',
+      title: 'Git worker handoff rehearsal',
+      status: 'completed',
+      updatedAt: 'Last week',
+      summary: 'Validated CONTRIBUTING.md-aware commit flow with dummy changes.'
+    },
+    {
+      id: 'run_20260125_090744',
+      title: 'Local docs and standards mapping',
+      status: 'stopped',
+      updatedAt: 'Last week',
+      summary: 'Stopped after discovering missing standards directory conventions.'
+    },
+    {
+      id: 'run_20260118_215631',
+      title: 'Parallel explore worker experiment',
+      status: 'completed',
+      updatedAt: '2 weeks ago',
+      summary: 'Compared multiple Explore Worker outputs for the same codebase.'
+    }
+  ];
+
   const messages = [
     {
       role: 'Lead Agent',
@@ -78,6 +138,7 @@
     {
       name: 'Spawned Explore Worker',
       status: 'working',
+      duration: '12m',
       time: '09:41',
       model: 'gpt-5.4',
       thinking: 'medium',
@@ -88,6 +149,7 @@
     {
       name: 'Spawned Plan Worker',
       status: 'stopped',
+      duration: '1m',
       time: '09:44',
       model: 'gpt-5.5',
       thinking: 'xhigh',
@@ -98,6 +160,7 @@
     {
       name: 'Spawned Review Worker',
       status: 'failed',
+      duration: '4m',
       time: '09:47',
       model: 'gpt-5.5',
       thinking: 'xhigh',
@@ -108,6 +171,7 @@
     {
       name: 'Spawned Git Worker',
       status: 'completed',
+      duration: '36m',
       time: '09:52',
       model: 'gpt-5.4',
       thinking: 'low',
@@ -131,6 +195,13 @@
   const leadStates = ['Working...', 'Thinking...', 'Waiting Workers to Finish...'];
   const activeLeadState = leadStates[2];
   const activeLeadStateElapsed = '34m';
+
+  const workerStatusClasses = {
+    working: 'bg-blue-400',
+    stopped: 'bg-yellow-400',
+    failed: 'bg-red-400',
+    completed: 'bg-green-400'
+  } as const;
 
   $: slashQuery = chatInput.startsWith('/') ? chatInput.slice(1).toLowerCase() : '';
   $: filteredSlashCommands = chatInput.startsWith('/')
@@ -175,6 +246,10 @@
   }
 
   function handleChatSubmit() {
+    if (chatInput.trim().startsWith('/resume')) {
+      isRunSelectorOpen = true;
+    }
+
     chatInput = '';
     highlightedCommandIndex = 0;
   }
@@ -261,7 +336,10 @@
 
     <div class="my-7 h-px bg-white/10"></div>
 
-    <button class="w-full rounded-md border border-white/20 bg-white px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.14em] text-ash transition hover:bg-paper hover:text-ink">
+    <button
+      class="w-full rounded-md border border-white/20 bg-white px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.14em] text-ash transition hover:bg-paper hover:text-ink"
+      onclick={() => (isRunSelectorOpen = true)}
+    >
       Change Run
     </button>
 
@@ -323,8 +401,25 @@
                   <div class="flex items-center justify-between gap-4">
                     <div class="flex items-center gap-3">
                       <p class="font-semibold">{workerPreview.name}</p>
-                      <span class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-medium text-ink/55">
-                        {workerPreview.status}{workerPreview.status === 'working' ? '...' : ''}
+                      <span
+                        class={[
+                          'inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-medium text-ink/55',
+                          workerPreview.status === 'working' && 'subtle-shimmer'
+                        ]}
+                      >
+                        <span
+                          class={[
+                            'size-1.5 rounded-full',
+                            workerStatusClasses[workerPreview.status]
+                          ]}
+                        ></span>
+                        <span>
+                          {#if workerPreview.status === 'working'}
+                            working... ({workerPreview.duration})
+                          {:else}
+                            {workerPreview.status} in {workerPreview.duration}
+                          {/if}
+                        </span>
                       </span>
                       <span class="font-mono text-xs text-ink/40">
                         {workerPreview.model} / {workerPreview.thinking}
@@ -368,10 +463,21 @@
         </div>
 
         <section class="rounded-lg border border-white/10 bg-[#171717] p-3">
-          <div class="mb-3 flex">
+          <div class="mb-3 flex items-center justify-between gap-3">
             <span class="subtle-shimmer rounded-md border border-white/15 px-3 py-2 text-xs font-medium text-ink">
               {activeLeadState} ({activeLeadStateElapsed})
             </span>
+            <button class="flex items-center gap-2 rounded-md border border-red-500/35 bg-red-950/45 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-red-100 transition hover:bg-red-900/60">
+              <svg
+                aria-hidden="true"
+                class="size-3"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <rect x="5" y="5" width="10" height="10" rx="1" />
+              </svg>
+              <span>Stop</span>
+            </button>
           </div>
 
           <form
@@ -563,4 +669,76 @@
     </section>
   </aside>
   </div>
+
+  {#if isRunSelectorOpen}
+    <div
+      class="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6"
+      role="presentation"
+      onclick={() => (isRunSelectorOpen = false)}
+    >
+      <section
+        class="flex max-h-[82vh] w-full max-w-5xl flex-col rounded-lg border border-white/15 bg-paper shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="run-selector-title"
+        onclick={(event) => event.stopPropagation()}
+      >
+        <header class="flex items-start justify-between gap-6 border-b border-white/10 p-5">
+          <div>
+            <p class="font-mono text-xs font-medium uppercase tracking-[0.18em] text-ink/45">
+              /resume
+            </p>
+            <h2 id="run-selector-title" class="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+              Change Run
+            </h2>
+            <p class="mt-2 text-sm text-ink/45">
+              Open an existing run from this project directory.
+            </p>
+          </div>
+
+          <button
+            class="grid size-9 place-items-center rounded-md border border-white/10 bg-white/[0.03] text-ink transition hover:bg-white/10"
+            aria-label="Close run selector"
+            onclick={() => (isRunSelectorOpen = false)}
+          >
+            <svg
+              aria-hidden="true"
+              class="size-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+
+        <div class="scrollbar-hidden grid gap-3 overflow-y-auto p-5">
+          {#each runs as run}
+            <button
+              class="rounded-lg border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/10"
+              onclick={() => (isRunSelectorOpen = false)}
+            >
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="font-mono text-xs font-medium uppercase tracking-[0.12em] text-ink/35">
+                    Run ID
+                  </p>
+                  <p class="mt-1 font-mono text-sm text-ink/65">{run.id}</p>
+                  <p class="mt-1 text-lg font-semibold">{run.title}</p>
+                </div>
+                <span class="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-medium text-ink/55">
+                  {run.status}
+                </span>
+              </div>
+              <p class="mt-3 text-sm leading-6 text-ink/55">{run.summary}</p>
+              <p class="mt-3 font-mono text-xs text-ink/35">updated {run.updatedAt}</p>
+            </button>
+          {/each}
+        </div>
+      </section>
+    </div>
+  {/if}
 </main>
