@@ -13,6 +13,9 @@
   ],
   "scripts": {
     "clean": "rimraf packages/*/dist tmp/tsbuildinfo",
+    "dev:web": "npm run dev --workspace @codex-lead/web-ui",
+    "build:web": "npm run build --workspace @codex-lead/web-ui",
+    "check:web": "npm run check --workspace @codex-lead/web-ui",
     "prebuild": "npm run clean",
     "build": "tsc -b --pretty false",
     "postbuild": "chmod +x packages/cli/dist/bin/codex-lead.js",

@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter';
+  --font-mono: 'Inter';
+  --color-ink: #050505;
+  --color-ash: #efefef;
+  --color-paper: #ffffff;
+  --color-rust: #222222;
+  --color-cobalt: #444444;
+  --color-moss: #666666;
+  --color-gold: #999999;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+:root {
+  color: var(--color-ink);
+  background: var(--color-ash);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  content: '';
+  background: #efefef;
+}
+
+body::after {
+  content: none;
+}
+
+::selection {
+  color: var(--color-paper);
+  background: var(--color-rust);
+}

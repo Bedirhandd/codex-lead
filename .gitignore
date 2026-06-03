@@ -1,5 +1,6 @@
 .project-memory/
 AGENTS.md
+DESIGN.md
 
 tmp/
 tmp/*
@@ -7,6 +8,7 @@ docs/
 docs/*
 
 node_modules/
+.svelte-kit/
 dist/
 coverage/
 *.tsbuildinfo
