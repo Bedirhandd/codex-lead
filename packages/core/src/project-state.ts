@@ -142,10 +142,13 @@ type JsonObject = Readonly<Record<string, unknown>>;
 export class ProjectStateParseError extends Error {
   public readonly path: string;
 
+  public readonly reason: string;
+
   public constructor(path: string, reason: string) {
     super(`${path}: ${reason}`);
     this.name = "ProjectStateParseError";
     this.path = path;
+    this.reason = reason;
   }
 }
 

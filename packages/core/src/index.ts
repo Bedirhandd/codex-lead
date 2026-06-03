@@ -31,6 +31,16 @@ export {
   workerRunStatuses,
 } from "./project-state.js";
 
+export {
+  appendJournalEntry,
+  getCodexLeadPaths,
+  loadCodexLeadConfig,
+  loadJournalEntries,
+  loadRunState,
+  writeCodexLeadConfig,
+  writeRunState,
+} from "./project-state-fs.js";
+
 export type {
   AgentDefaults,
   CodexLeadConfig,
@@ -49,3 +59,5 @@ export type {
   WorkerRunState,
   WorkerRunStatus,
 } from "./project-state.js";
+
+export type { CodexLeadPaths, CodexLeadRunPaths } from "./project-state-fs.js";
