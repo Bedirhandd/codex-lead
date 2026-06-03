@@ -99,10 +99,6 @@
 
   const statusItems = [
     {
-      label: 'Dummy Usage Limits',
-      value: '42% used'
-    },
-    {
       label: 'Active Worker Count',
       value: '2'
     },
@@ -270,6 +266,19 @@
     failed: 'bg-red-400',
     completed: 'bg-green-400'
   } as const;
+
+  const usageLimits = [
+    {
+      label: 'Weekly',
+      percent: 42,
+      resetsAt: 'resets at June 4'
+    },
+    {
+      label: '5h Period',
+      percent: 68,
+      resetsAt: 'resets at 5:44pm'
+    }
+  ];
 
   $: slashQuery = chatInput.startsWith('/') ? chatInput.slice(1).toLowerCase() : '';
   $: filteredSlashCommands = chatInput.startsWith('/')
@@ -848,6 +857,30 @@
               </div>
             </section>
           {/if}
+        </div>
+      </article>
+
+      <article class="rounded-md border border-white/10 bg-white/[0.03] p-3">
+        <p class="font-mono text-[0.68rem] font-medium uppercase tracking-[0.14em] text-ink/45">
+          Usage Limits
+        </p>
+
+        <div class="mt-3 grid gap-3">
+          {#each usageLimits as limit}
+            <section>
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-sm font-semibold">{limit.label}</p>
+                <p class="font-mono text-xs text-ink/45">{limit.percent}% used</p>
+              </div>
+              <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div
+                  class="h-full rounded-full bg-white/60"
+                  style={`width: ${limit.percent}%`}
+                ></div>
+              </div>
+              <p class="mt-1 font-mono text-xs text-ink/35">{limit.resetsAt}</p>
+            </section>
+          {/each}
         </div>
       </article>
 
