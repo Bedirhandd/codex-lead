@@ -115,30 +115,30 @@
 </svelte:head>
 
 <main class="h-screen overflow-hidden bg-ash p-6 text-ink">
-  <div class="mx-auto grid h-full max-w-500 grid-cols-[25rem_minmax(0,1fr)_25rem] overflow-hidden rounded-lg border border-ink/20 bg-paper">
-  <aside class="min-h-0 overflow-hidden border-r border-ink/20 bg-paper p-6">
+  <div class="mx-auto grid h-full max-w-500 grid-cols-[25rem_minmax(0,1fr)_25rem] overflow-hidden rounded-lg border border-white/10 bg-paper">
+  <aside class="min-h-0 overflow-hidden border-r border-white/10 bg-paper p-6">
     <section>
-      <p class="font-mono text-xs font-medium uppercase tracking-[0.22em] text-ink/55">Codex Lead</p>
+      <p class="font-mono text-xs font-medium uppercase tracking-[0.22em] text-ink/50">Codex Lead</p>
       <button
-        class="mt-3 block text-left text-4xl font-semibold tracking-[-0.06em] transition hover:text-ink/65"
+        class="mt-3 block text-left text-4xl font-semibold tracking-[-0.06em] transition hover:text-ink/70"
         onclick={() => (selectedThread = 'lead')}
       >
         Lead Agent
       </button>
     </section>
 
-    <div class="my-7 h-px bg-ink/20"></div>
+    <div class="my-7 h-px bg-white/10"></div>
 
     <section>
-      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/55">Active Workers</p>
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/50">Active Workers</p>
       <div class="mt-4 grid gap-3">
         {#each activeWorkers as worker}
           <button
             class={[
-              'rounded-md border px-4 py-3 text-left font-mono text-sm font-medium transition hover:bg-ink hover:text-paper',
+              'rounded-md border px-4 py-3 text-left font-mono text-sm font-medium transition hover:border-white/30 hover:bg-white/10',
               selectedThread === worker.id
-                ? 'border-ink bg-ink text-paper'
-                : 'border-ink/20 bg-white text-ink'
+                ? 'border-white/35 bg-white/15 text-ink'
+                : 'border-white/10 bg-white/[0.03] text-ink'
             ]}
             onclick={() => (selectedThread = worker.id)}
           >
@@ -149,22 +149,22 @@
       </div>
     </section>
 
-    <div class="my-7 h-px bg-ink/20"></div>
+    <div class="my-7 h-px bg-white/10"></div>
 
-    <button class="w-full rounded-md border border-ink bg-ink px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.14em] text-paper transition hover:bg-paper hover:text-ink">
+    <button class="w-full rounded-md border border-white/20 bg-white px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.14em] text-ash transition hover:bg-paper hover:text-ink">
       Change Run
     </button>
 
-    <div class="my-7 h-px bg-ink/20"></div>
+    <div class="my-7 h-px bg-white/10"></div>
 
-    <button class="w-full rounded-md border border-ink bg-paper px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.14em] text-ink transition hover:bg-ink hover:text-paper">
+    <button class="w-full rounded-md border border-white/15 bg-white/[0.03] px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.14em] text-ink transition hover:bg-white/10">
       Create a New Run
     </button>
 
-    <div class="my-7 h-px bg-ink/20"></div>
+    <div class="my-7 h-px bg-white/10"></div>
 
     <a
-      class="block rounded-md border border-ink/20 bg-white px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-ink transition hover:bg-ink hover:text-paper"
+      class="block rounded-md border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-ink transition hover:bg-white/10"
       href="https://github.com"
       rel="noreferrer"
       target="_blank"
@@ -181,10 +181,10 @@
           {#each messages as message}
             <article
               class={[
-                'max-w-[72%] rounded-lg border border-ink/15 p-5 shadow-sm',
+                'max-w-[72%] rounded-lg border border-white/10 p-5 shadow-sm',
                 message.role === 'You'
-                  ? 'ml-auto bg-ink text-paper'
-                  : 'bg-white text-ink'
+                  ? 'ml-auto bg-white text-ash'
+                  : 'bg-paper text-ink'
               ]}
             >
               <p class="font-mono text-xs font-medium uppercase tracking-[0.16em] opacity-55">
@@ -195,18 +195,18 @@
           {/each}
         </div>
 
-        <form class="grid grid-cols-[minmax(0,1fr)_9rem] overflow-hidden rounded-lg border border-ink bg-white">
+        <form class="grid grid-cols-[minmax(0,1fr)_9rem] overflow-hidden rounded-lg border border-white/15 bg-paper">
           <input
             class="min-w-0 bg-transparent px-5 py-4 text-base outline-none placeholder:text-ink/35"
             placeholder="Write to Lead Agent..."
           />
-          <button class="border-l border-ink bg-ink px-5 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-paper transition hover:bg-paper hover:text-ink">
+          <button class="border-l border-white/15 bg-white px-5 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-ash transition hover:bg-paper hover:text-ink">
             Send
           </button>
         </form>
       {:else}
         <div class="flex min-h-0 flex-1 flex-col gap-4">
-          <header class="rounded-lg border border-ink/20 bg-white p-4">
+          <header class="rounded-lg border border-white/10 bg-paper p-4">
             <div class="flex items-center justify-between gap-6">
               <div>
                 <p class="font-mono text-xs font-medium uppercase tracking-[0.16em] text-ink/45">
@@ -217,25 +217,25 @@
                 </h2>
               </div>
 
-              <div class="rounded-md border border-ink bg-ink px-3 py-2 text-paper">
+              <div class="rounded-md border border-white/15 bg-white px-3 py-2 text-ash">
                 <p class="text-sm font-semibold">working<span class="animate-pulse">...</span></p>
               </div>
             </div>
 
             <div class="mt-4 grid grid-cols-3 gap-3">
-              <article class="rounded-md border border-ink/15 bg-ash px-3 py-2">
+              <article class="rounded-md border border-white/10 bg-ash px-3 py-2">
                 <p class="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ink/45">
                   Model
                 </p>
                 <p class="mt-1 font-semibold">{selectedWorker.model}</p>
               </article>
-              <article class="rounded-md border border-ink/15 bg-ash px-3 py-2">
+              <article class="rounded-md border border-white/10 bg-ash px-3 py-2">
                 <p class="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ink/45">
                   Thinking
                 </p>
                 <p class="mt-1 font-semibold">{selectedWorker.thinking}</p>
               </article>
-              <article class="rounded-md border border-ink/15 bg-ash px-3 py-2">
+              <article class="rounded-md border border-white/10 bg-ash px-3 py-2">
                 <p class="font-mono text-[0.68rem] uppercase tracking-[0.14em] text-ink/45">
                   Runtime
                 </p>
@@ -310,17 +310,17 @@
     </div>
   </section>
 
-  <aside class="min-h-0 overflow-hidden border-l border-ink/20 bg-paper p-6">
+  <aside class="min-h-0 overflow-hidden border-l border-white/10 bg-paper p-6">
     <section>
-      <p class="font-mono text-xs font-medium uppercase tracking-[0.22em] text-ink/55">Lead Telemetry</p>
+      <p class="font-mono text-xs font-medium uppercase tracking-[0.22em] text-ink/50">Lead Telemetry</p>
       <h2 class="mt-3 text-3xl font-semibold tracking-[-0.05em]">Run Status</h2>
     </section>
 
-    <div class="my-7 h-px bg-ink/20"></div>
+    <div class="my-7 h-px bg-white/10"></div>
 
     <section class="grid gap-2">
       {#each statusItems as item}
-        <article class="rounded-md border border-ink/20 bg-white p-3">
+        <article class="rounded-md border border-white/10 bg-white/[0.03] p-3">
           <p class="font-mono text-[0.68rem] font-medium uppercase tracking-[0.14em] text-ink/45">
             {item.label}
           </p>
