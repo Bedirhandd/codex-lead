@@ -9,6 +9,7 @@ docs/*
 
 node_modules/
 .svelte-kit/
+packages/web-ui/build/
 dist/
 coverage/
 *.tsbuildinfo

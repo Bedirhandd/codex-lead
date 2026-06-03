@@ -18,7 +18,6 @@
     "check:web": "npm run check --workspace @codex-lead/web-ui",
     "prebuild": "npm run clean",
     "build": "tsc -b --pretty false",
-    "postbuild": "chmod +x packages/cli/dist/bin/codex-lead.js",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

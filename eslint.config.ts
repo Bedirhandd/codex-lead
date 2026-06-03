@@ -8,7 +8,9 @@ export default tseslint.config(
     ignores: [
       "**/dist/**",
       "**/coverage/**",
+      "packages/web-ui/build/**",
       "**/node_modules/**",
+      "**/.svelte-kit/**",
       "**/*.tsbuildinfo",
       ".husky/_/**",
       ".project-memory/**",
