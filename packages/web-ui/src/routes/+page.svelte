@@ -1,10 +1,81 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   type ThreadId = 'lead' | 'explore-1' | 'explore-2';
 
   let selectedThread: ThreadId = 'lead';
   let chatInput = '';
   let highlightedCommandIndex = 0;
   let isRunSelectorOpen = false;
+  let selectedLeadModel = 'gpt-5.4';
+  let selectedLeadThinkingLevel = 'high';
+  let isLeadModelPickerOpen = false;
+  let leadConfigStep: 'model' | 'thinking' = 'model';
+  let highlightedLeadConfigIndex = 0;
+
+  const leadModelOptions = ['gpt-5.4', 'gpt-5.5', 'gpt-5.4-mini'];
+  const thinkingLevelOptions = ['low', 'medium', 'high', 'xhigh'];
+  $: currentLeadConfigOptions =
+    leadConfigStep === 'model' ? leadModelOptions : thinkingLevelOptions;
+
+  function openLeadConfigPicker() {
+    isLeadModelPickerOpen = true;
+    leadConfigStep = 'model';
+    highlightedLeadConfigIndex = 0;
+  }
+
+  function selectLeadConfigOption(value: string) {
+    if (leadConfigStep === 'model') {
+      selectedLeadModel = value;
+      leadConfigStep = 'thinking';
+      highlightedLeadConfigIndex = Math.max(
+        thinkingLevelOptions.indexOf(selectedLeadThinkingLevel),
+        0
+      );
+      return;
+    }
+
+    selectedLeadThinkingLevel = value;
+    isLeadModelPickerOpen = false;
+    leadConfigStep = 'model';
+    highlightedLeadConfigIndex = 0;
+  }
+
+  function handleLeadConfigKeydown(event: KeyboardEvent) {
+    if (!isLeadModelPickerOpen) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        openLeadConfigPicker();
+      }
+
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      highlightedLeadConfigIndex =
+        (highlightedLeadConfigIndex + 1) % currentLeadConfigOptions.length;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      highlightedLeadConfigIndex =
+        (highlightedLeadConfigIndex - 1 + currentLeadConfigOptions.length) %
+        currentLeadConfigOptions.length;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      selectLeadConfigOption(currentLeadConfigOptions[highlightedLeadConfigIndex]);
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      isLeadModelPickerOpen = false;
+      leadConfigStep = 'model';
+      highlightedLeadConfigIndex = 0;
+    }
+  }
 
   const activeWorkers = [
     {
@@ -27,14 +98,6 @@
     activeWorkers.find((worker) => worker.id === selectedThread) ?? activeWorkers[0];
 
   const statusItems = [
-    {
-      label: 'Lead Agent Model',
-      value: 'gpt-5.4'
-    },
-    {
-      label: 'Thinking Level',
-      value: 'high'
-    },
     {
       label: 'Dummy Usage Limits',
       value: '42% used'
@@ -192,8 +255,13 @@
     }
   ];
 
-  const leadStates = ['Working...', 'Thinking...', 'Waiting Workers to Finish...'];
-  const activeLeadState = leadStates[2];
+  const leadStates = [
+    'Working...',
+    'Thinking...',
+    'Waiting Workers to Finish...',
+    'Compacting Conversation...'
+  ];
+  const activeLeadState = leadStates[0];
   const activeLeadStateElapsed = '34m';
 
   const workerStatusClasses = {
@@ -222,6 +290,25 @@
     chatInput = `${highlightedCommand.command} `;
   }
 
+  function runHighlightedCommand() {
+    const highlightedCommand = filteredSlashCommands[highlightedCommandIndex];
+
+    if (!highlightedCommand) {
+      return false;
+    }
+
+    if (highlightedCommand.command === '/resume') {
+      isRunSelectorOpen = true;
+      chatInput = '';
+      highlightedCommandIndex = 0;
+      return true;
+    }
+
+    chatInput = '';
+    highlightedCommandIndex = 0;
+    return true;
+  }
+
   function handleChatKeydown(event: KeyboardEvent) {
     if (!showSlashCommands) {
       return;
@@ -243,6 +330,11 @@
       event.preventDefault();
       completeHighlightedCommand();
     }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      runHighlightedCommand();
+    }
   }
 
   function handleChatSubmit() {
@@ -253,6 +345,20 @@
     chatInput = '';
     highlightedCommandIndex = 0;
   }
+
+  onMount(() => {
+    function handleWindowKeydown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        isRunSelectorOpen = false;
+      }
+    }
+
+    window.addEventListener('keydown', handleWindowKeydown);
+
+    return () => {
+      window.removeEventListener('keydown', handleWindowKeydown);
+    };
+  });
 
   const workerOutputs = [
     '[09:41:12] starting repository scan',
@@ -366,6 +472,12 @@
     <div class="flex min-h-0 flex-1 flex-col px-8 py-6">
       {#if selectedThread === 'lead'}
         <div class="scrollbar-hidden grid flex-1 content-start gap-4 overflow-y-auto pb-6">
+          <div class="flex items-center gap-3 py-1 text-xs text-ink/30">
+            <div class="h-px flex-1 bg-white/10"></div>
+            <span class="font-mono uppercase tracking-[0.14em]">chat compacted at 09:32</span>
+            <div class="h-px flex-1 bg-white/10"></div>
+          </div>
+
           {#each messages as message}
             <article
               class={[
@@ -656,6 +768,89 @@
     <div class="my-7 h-px bg-white/10"></div>
 
     <section class="grid gap-2">
+      <article class="rounded-md border border-white/10 bg-white/[0.03] p-3">
+        <p class="font-mono text-[0.68rem] font-medium uppercase tracking-[0.14em] text-ink/45">
+          Lead Agent Model
+        </p>
+
+        <div class="relative mt-3">
+          <button
+            class="flex w-full items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.02] px-3 py-2.5 text-left transition hover:border-white/15 hover:bg-white/[0.04]"
+            aria-haspopup="listbox"
+            aria-expanded={isLeadModelPickerOpen}
+            onkeydown={handleLeadConfigKeydown}
+            onclick={() => {
+              if (isLeadModelPickerOpen) {
+                isLeadModelPickerOpen = false;
+                leadConfigStep = 'model';
+                return;
+              }
+
+              openLeadConfigPicker();
+            }}
+          >
+            <span>
+              <span class="block text-sm font-medium text-ink/85">
+                {selectedLeadModel} / {selectedLeadThinkingLevel}
+              </span>
+            </span>
+            <svg
+              aria-hidden="true"
+              class={[
+                'size-4 text-ink/45 transition',
+                isLeadModelPickerOpen && 'rotate-180'
+              ]}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          {#if isLeadModelPickerOpen}
+            <section class="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-md border border-white/12 bg-[#151515] shadow-2xl">
+              <div class="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+                <span
+                  class={[
+                    'size-1.5 rounded-full transition',
+                    leadConfigStep === 'model' ? 'bg-white' : 'bg-white/25'
+                  ]}
+                ></span>
+                <span
+                  class={[
+                    'size-1.5 rounded-full transition',
+                    leadConfigStep === 'thinking' ? 'bg-white' : 'bg-white/25'
+                  ]}
+                ></span>
+                <p class="ml-2 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-ink/40">
+                  {leadConfigStep === 'model' ? 'Choose model' : 'Choose thinking level'}
+                </p>
+              </div>
+
+              <div class="grid gap-1 p-2">
+                {#each currentLeadConfigOptions as option, index}
+                  <button
+                    type="button"
+                    class={[
+                      'rounded-md px-3 py-2 text-left text-sm font-medium transition',
+                      index === highlightedLeadConfigIndex
+                        ? 'bg-white text-ash'
+                        : 'text-ink hover:bg-white/10'
+                    ]}
+                    onclick={() => selectLeadConfigOption(option)}
+                    onmouseenter={() => (highlightedLeadConfigIndex = index)}
+                  >
+                    {option}
+                  </button>
+                {/each}
+              </div>
+            </section>
+          {/if}
+        </div>
+      </article>
+
       {#each statusItems as item}
         <article class="rounded-md border border-white/10 bg-white/[0.03] p-3">
           <p class="font-mono text-[0.68rem] font-medium uppercase tracking-[0.14em] text-ink/45">
