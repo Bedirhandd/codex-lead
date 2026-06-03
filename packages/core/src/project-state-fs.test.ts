@@ -6,9 +6,12 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   ProjectStateParseError,
+  applyCodexLeadInitializationPlan,
   appendJournalEntry,
+  createCodexLeadInitializationPlan,
   createDefaultCodexLeadConfig,
   getCodexLeadPaths,
+  inspectCodexLeadProject,
   loadCodexLeadConfig,
   loadJournalEntries,
   loadRunState,
@@ -93,6 +96,144 @@ describe("codex-lead project state filesystem", () => {
     await expect(loadCodexLeadConfig(projectRoot)).rejects.toMatchObject({
       path: paths.configFile,
     });
+  });
+
+  it("plans and applies initialization for an empty project", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const paths = getCodexLeadPaths(projectRoot);
+    const inspection = await inspectCodexLeadProject(projectRoot);
+    const plan = createCodexLeadInitializationPlan(inspection);
+
+    expect(plan).toEqual({
+      paths,
+      alreadyInitialized: false,
+      actions: [
+        {
+          type: "create-directory",
+          path: paths.codexLeadRoot,
+        },
+        {
+          type: "create-directory",
+          path: paths.docsDir,
+        },
+        {
+          type: "create-directory",
+          path: paths.standardsDir,
+        },
+        {
+          type: "create-directory",
+          path: paths.runsDir,
+        },
+        {
+          type: "write-default-config",
+          path: paths.configFile,
+          projectRoot,
+        },
+      ],
+    });
+
+    await expect(applyCodexLeadInitializationPlan(plan)).resolves.toEqual({
+      paths,
+      alreadyInitialized: false,
+      createdPaths: [
+        paths.codexLeadRoot,
+        paths.docsDir,
+        paths.standardsDir,
+        paths.runsDir,
+      ],
+      wroteConfig: true,
+    });
+    await expect(loadCodexLeadConfig(projectRoot)).resolves.toEqual(
+      createDefaultCodexLeadConfig(projectRoot),
+    );
+  });
+
+  it("returns an empty initialization plan for an initialized project", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const initialPlan = createCodexLeadInitializationPlan(
+      await inspectCodexLeadProject(projectRoot),
+    );
+
+    await applyCodexLeadInitializationPlan(initialPlan);
+
+    const initializedInspection = await inspectCodexLeadProject(projectRoot);
+    const initializedPlan = createCodexLeadInitializationPlan(
+      initializedInspection,
+    );
+
+    expect(initializedInspection.config).toEqual(
+      createDefaultCodexLeadConfig(projectRoot),
+    );
+    expect(initializedPlan).toEqual({
+      paths: getCodexLeadPaths(projectRoot),
+      actions: [],
+      alreadyInitialized: true,
+    });
+  });
+
+  it("plans only missing directories when config already exists", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const paths = getCodexLeadPaths(projectRoot);
+    const config = createDefaultCodexLeadConfig(projectRoot);
+
+    await mkdir(paths.codexLeadRoot, { recursive: true });
+    await writeCodexLeadConfig(projectRoot, config);
+
+    const plan = createCodexLeadInitializationPlan(
+      await inspectCodexLeadProject(projectRoot),
+    );
+
+    expect(plan).toEqual({
+      paths,
+      alreadyInitialized: false,
+      actions: [
+        {
+          type: "create-directory",
+          path: paths.docsDir,
+        },
+        {
+          type: "create-directory",
+          path: paths.standardsDir,
+        },
+        {
+          type: "create-directory",
+          path: paths.runsDir,
+        },
+      ],
+    });
+
+    await applyCodexLeadInitializationPlan(plan);
+    await expect(loadCodexLeadConfig(projectRoot)).resolves.toEqual(config);
+  });
+
+  it("fails loudly when initialization inspection finds invalid config", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const paths = getCodexLeadPaths(projectRoot);
+
+    await mkdir(paths.codexLeadRoot, { recursive: true });
+    await writeFile(paths.configFile, "{", "utf8");
+
+    await expect(inspectCodexLeadProject(projectRoot)).rejects.toThrow(
+      ProjectStateParseError,
+    );
+  });
+
+  it("does not overwrite config if it appears after planning", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const plan = createCodexLeadInitializationPlan(
+      await inspectCodexLeadProject(projectRoot),
+    );
+    const config = {
+      ...createDefaultCodexLeadConfig(projectRoot),
+      workerPromptingLanguage: "tr",
+    };
+
+    await writeCodexLeadConfig(projectRoot, config);
+
+    await expect(applyCodexLeadInitializationPlan(plan)).rejects.toMatchObject({
+      code: "EEXIST",
+    });
+    await expect(loadCodexLeadConfig(projectRoot)).resolves.toEqual(config);
   });
 });
 

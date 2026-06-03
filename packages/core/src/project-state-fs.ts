@@ -2,14 +2,17 @@ import { randomUUID } from "node:crypto";
 import {
   appendFile,
   mkdir,
+  open,
   readFile,
   rename,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 import {
   ProjectStateParseError,
+  createDefaultCodexLeadConfig,
   parseCodexLeadConfig,
   parseJournalNdjson,
   parseRunState,
@@ -36,6 +39,42 @@ export type CodexLeadRunPaths = {
   readonly journalFile: string;
 };
 
+export type CodexLeadProjectInspection = {
+  readonly paths: CodexLeadPaths;
+  readonly exists: {
+    readonly codexLeadRoot: boolean;
+    readonly configFile: boolean;
+    readonly docsDir: boolean;
+    readonly standardsDir: boolean;
+    readonly runsDir: boolean;
+  };
+  readonly config?: CodexLeadConfig;
+};
+
+export type CodexLeadInitializationAction =
+  | {
+      readonly type: "create-directory";
+      readonly path: string;
+    }
+  | {
+      readonly type: "write-default-config";
+      readonly path: string;
+      readonly projectRoot: string;
+    };
+
+export type CodexLeadInitializationPlan = {
+  readonly paths: CodexLeadPaths;
+  readonly actions: readonly CodexLeadInitializationAction[];
+  readonly alreadyInitialized: boolean;
+};
+
+export type CodexLeadInitializationResult = {
+  readonly paths: CodexLeadPaths;
+  readonly createdPaths: readonly string[];
+  readonly wroteConfig: boolean;
+  readonly alreadyInitialized: boolean;
+};
+
 export function getCodexLeadPaths(projectRoot: string): CodexLeadPaths {
   const absoluteProjectRoot = resolve(projectRoot);
   const codexLeadRoot = join(absoluteProjectRoot, ".codex-lead");
@@ -47,6 +86,105 @@ export function getCodexLeadPaths(projectRoot: string): CodexLeadPaths {
     docsDir: join(codexLeadRoot, "docs"),
     standardsDir: join(codexLeadRoot, "standards"),
     runsDir: join(codexLeadRoot, "runs"),
+  };
+}
+
+export async function inspectCodexLeadProject(
+  projectRoot: string,
+): Promise<CodexLeadProjectInspection> {
+  const paths = getCodexLeadPaths(projectRoot);
+  const configFileExists = await pathExists(paths.configFile);
+  const config = configFileExists
+    ? await loadCodexLeadConfig(paths.projectRoot)
+    : undefined;
+
+  return {
+    paths,
+    exists: {
+      codexLeadRoot: await pathExists(paths.codexLeadRoot),
+      configFile: configFileExists,
+      docsDir: await pathExists(paths.docsDir),
+      standardsDir: await pathExists(paths.standardsDir),
+      runsDir: await pathExists(paths.runsDir),
+    },
+    ...(config === undefined ? {} : { config }),
+  };
+}
+
+export function createCodexLeadInitializationPlan(
+  inspection: CodexLeadProjectInspection,
+): CodexLeadInitializationPlan {
+  const actions: CodexLeadInitializationAction[] = [];
+
+  if (!inspection.exists.codexLeadRoot) {
+    actions.push({
+      type: "create-directory",
+      path: inspection.paths.codexLeadRoot,
+    });
+  }
+
+  if (!inspection.exists.docsDir) {
+    actions.push({
+      type: "create-directory",
+      path: inspection.paths.docsDir,
+    });
+  }
+
+  if (!inspection.exists.standardsDir) {
+    actions.push({
+      type: "create-directory",
+      path: inspection.paths.standardsDir,
+    });
+  }
+
+  if (!inspection.exists.runsDir) {
+    actions.push({
+      type: "create-directory",
+      path: inspection.paths.runsDir,
+    });
+  }
+
+  if (!inspection.exists.configFile) {
+    actions.push({
+      type: "write-default-config",
+      path: inspection.paths.configFile,
+      projectRoot: inspection.paths.projectRoot,
+    });
+  }
+
+  return {
+    paths: inspection.paths,
+    actions,
+    alreadyInitialized: actions.length === 0,
+  };
+}
+
+export async function applyCodexLeadInitializationPlan(
+  plan: CodexLeadInitializationPlan,
+): Promise<CodexLeadInitializationResult> {
+  const createdPaths: string[] = [];
+  let wroteConfig = false;
+
+  for (const action of plan.actions) {
+    if (action.type === "create-directory") {
+      const existedBefore = await pathExists(action.path);
+
+      await mkdir(action.path, { recursive: true });
+
+      if (!existedBefore) {
+        createdPaths.push(action.path);
+      }
+    } else {
+      await writeDefaultConfigIfMissing(action.projectRoot, action.path);
+      wroteConfig = true;
+    }
+  }
+
+  return {
+    paths: plan.paths,
+    createdPaths,
+    wroteConfig,
+    alreadyInitialized: plan.alreadyInitialized,
   };
 }
 
@@ -175,4 +313,39 @@ function withFilePath(filePath: string, error: unknown): unknown {
   }
 
   return error;
+}
+
+async function writeDefaultConfigIfMissing(
+  projectRoot: string,
+  configFile: string,
+): Promise<void> {
+  await mkdir(dirname(configFile), { recursive: true });
+
+  const handle = await open(configFile, "wx");
+
+  try {
+    await handle.writeFile(
+      serializeCodexLeadConfig(createDefaultCodexLeadConfig(projectRoot)),
+      "utf8",
+    );
+  } finally {
+    await handle.close();
+  }
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
 }

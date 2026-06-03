@@ -32,8 +32,11 @@ export {
 } from "./project-state.js";
 
 export {
+  applyCodexLeadInitializationPlan,
   appendJournalEntry,
+  createCodexLeadInitializationPlan,
   getCodexLeadPaths,
+  inspectCodexLeadProject,
   loadCodexLeadConfig,
   loadJournalEntries,
   loadRunState,
@@ -61,3 +64,9 @@ export type {
 } from "./project-state.js";
 
 export type { CodexLeadPaths, CodexLeadRunPaths } from "./project-state-fs.js";
+export type {
+  CodexLeadInitializationAction,
+  CodexLeadInitializationPlan,
+  CodexLeadInitializationResult,
+  CodexLeadProjectInspection,
+} from "./project-state-fs.js";
