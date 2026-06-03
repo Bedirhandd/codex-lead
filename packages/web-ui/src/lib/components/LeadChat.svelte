@@ -7,6 +7,8 @@
     WorkerStatus
   } from "$lib/data/dashboard";
 
+  const maxChatTextareaHeight = 192;
+
   export let activeLeadState: string;
   export let activeLeadStateElapsed: string;
   export let messages: readonly Message[];
@@ -17,6 +19,8 @@
   export let isRunSelectorOpen: boolean;
 
   let chatInput = "";
+  let chatTextarea: HTMLTextAreaElement;
+  let chatTextareaResizeFrame: number | undefined;
   let highlightedCommandIndex = 0;
 
   $: slashQuery = chatInput.startsWith("/") ? chatInput.slice(1).toLowerCase() : "";
@@ -28,6 +32,32 @@
     highlightedCommandIndex = 0;
   }
 
+  function queueChatTextareaResize() {
+    if (typeof requestAnimationFrame === "undefined") {
+      return;
+    }
+
+    if (chatTextareaResizeFrame !== undefined) {
+      cancelAnimationFrame(chatTextareaResizeFrame);
+    }
+
+    chatTextareaResizeFrame = requestAnimationFrame(() => {
+      chatTextareaResizeFrame = undefined;
+      resizeChatTextarea();
+    });
+  }
+
+  function resizeChatTextarea() {
+    if (!chatTextarea) {
+      return;
+    }
+
+    chatTextarea.style.height = "auto";
+    chatTextarea.style.height = `${Math.min(chatTextarea.scrollHeight, maxChatTextareaHeight)}px`;
+    chatTextarea.style.overflowY =
+      chatTextarea.scrollHeight > maxChatTextareaHeight ? "auto" : "hidden";
+  }
+
   function completeHighlightedCommand() {
     const highlightedCommand = filteredSlashCommands[highlightedCommandIndex];
 
@@ -36,6 +66,13 @@
     }
 
     chatInput = `${highlightedCommand.command} `;
+    queueChatTextareaResize();
+  }
+
+  function resetChatComposer() {
+    chatInput = "";
+    highlightedCommandIndex = 0;
+    queueChatTextareaResize();
   }
 
   function runHighlightedCommand() {
@@ -47,41 +84,50 @@
 
     if (highlightedCommand.command === "/resume") {
       isRunSelectorOpen = true;
-      chatInput = "";
-      highlightedCommandIndex = 0;
+      resetChatComposer();
       return true;
     }
 
-    chatInput = "";
-    highlightedCommandIndex = 0;
+    resetChatComposer();
     return true;
   }
 
   function handleChatKeydown(event: KeyboardEvent) {
-    if (!showSlashCommands) {
+    if (event.isComposing) {
       return;
     }
 
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      highlightedCommandIndex = (highlightedCommandIndex + 1) % filteredSlashCommands.length;
+    if (showSlashCommands) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        highlightedCommandIndex = (highlightedCommandIndex + 1) % filteredSlashCommands.length;
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        highlightedCommandIndex =
+          (highlightedCommandIndex - 1 + filteredSlashCommands.length) %
+          filteredSlashCommands.length;
+        return;
+      }
+
+      if (event.key === "Tab") {
+        event.preventDefault();
+        completeHighlightedCommand();
+        return;
+      }
+
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        runHighlightedCommand();
+        return;
+      }
     }
 
-    if (event.key === "ArrowUp") {
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      highlightedCommandIndex =
-        (highlightedCommandIndex - 1 + filteredSlashCommands.length) %
-        filteredSlashCommands.length;
-    }
-
-    if (event.key === "Tab") {
-      event.preventDefault();
-      completeHighlightedCommand();
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      runHighlightedCommand();
+      handleChatSubmit();
     }
   }
 
@@ -90,8 +136,7 @@
       isRunSelectorOpen = true;
     }
 
-    chatInput = "";
-    highlightedCommandIndex = 0;
+    resetChatComposer();
   }
 </script>
 
@@ -211,7 +256,7 @@
   </div>
 
   <form
-    class="relative grid grid-cols-[minmax(0,1fr)_9rem] overflow-visible rounded-lg border border-white/15 bg-[#0d0d0d]"
+    class="relative grid grid-cols-[minmax(0,1fr)_9rem] items-stretch overflow-visible rounded-lg border border-white/15 bg-[#0d0d0d]"
     onsubmit={(event) => {
       event.preventDefault();
       handleChatSubmit();
@@ -240,6 +285,7 @@
               onclick={() => {
                 chatInput = `${item.command} `;
                 highlightedCommandIndex = index;
+                queueChatTextareaResize();
               }}
             >
               <span class="font-mono text-sm font-semibold">{item.command}</span>
@@ -249,17 +295,20 @@
         </div>
 
         <div class="border-t border-white/10 px-4 py-2 text-xs text-white/40">
-          tab autocomplete / enter send / arrow keys move
+          tab autocomplete / enter send / shift+enter newline / arrow keys move
         </div>
       </section>
     {/if}
 
-    <input
+    <textarea
+      bind:this={chatTextarea}
       bind:value={chatInput}
-      class="min-w-0 bg-transparent px-5 py-4 text-base outline-none placeholder:text-ink/35"
+      class="max-h-48 min-h-[3.75rem] min-w-0 resize-none bg-transparent px-5 py-4 text-base leading-7 outline-none placeholder:text-ink/35"
       placeholder="Write to Lead Agent..."
+      rows="1"
+      oninput={queueChatTextareaResize}
       onkeydown={handleChatKeydown}
-    />
+    ></textarea>
     <button
       class="border-l border-white/15 bg-white px-5 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-ash transition hover:bg-paper hover:text-ink"
     >
