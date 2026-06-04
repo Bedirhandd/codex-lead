@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@codex-lead/core": "0.0.0"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 50438",
     "build": "vite build",

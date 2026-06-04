@@ -17,6 +17,7 @@
   export let spawnedWorkerPreviews: readonly SpawnedWorkerPreview[];
   export let workerStatusClasses: Readonly<Record<WorkerStatus, string>>;
   export let isRunSelectorOpen: boolean;
+  export let isInitInspectionOpen: boolean;
 
   let chatInput = "";
   let chatTextarea: HTMLTextAreaElement;
@@ -88,6 +89,12 @@
       return true;
     }
 
+    if (highlightedCommand.command === "/init") {
+      isInitInspectionOpen = true;
+      resetChatComposer();
+      return true;
+    }
+
     resetChatComposer();
     return true;
   }
@@ -132,8 +139,14 @@
   }
 
   function handleChatSubmit() {
-    if (chatInput.trim().startsWith("/resume")) {
+    const trimmedChatInput = chatInput.trim();
+
+    if (trimmedChatInput.startsWith("/resume")) {
       isRunSelectorOpen = true;
+    }
+
+    if (trimmedChatInput.startsWith("/init")) {
+      isInitInspectionOpen = true;
     }
 
     resetChatComposer();

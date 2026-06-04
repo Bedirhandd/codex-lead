@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
+  import InitInspectionModal from "$lib/components/InitInspectionModal.svelte";
   import LeadChat from "$lib/components/LeadChat.svelte";
   import RunSelectorModal from "$lib/components/RunSelectorModal.svelte";
   import RunTelemetry from "$lib/components/RunTelemetry.svelte";
@@ -26,6 +27,7 @@
 
   let selectedThread: ThreadId = "lead";
   let isRunSelectorOpen = false;
+  let isInitInspectionOpen = false;
 
   $: selectedWorker =
     activeWorkers.find((worker) => worker.id === selectedThread) ?? activeWorkers[0];
@@ -34,6 +36,7 @@
     function handleWindowKeydown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         isRunSelectorOpen = false;
+        isInitInspectionOpen = false;
       }
     }
 
@@ -73,6 +76,7 @@
             {slashCommands}
             {spawnedWorkerPreviews}
             {workerStatusClasses}
+            bind:isInitInspectionOpen
             bind:isRunSelectorOpen
             bind:selectedThread
           />
@@ -91,4 +95,5 @@
   </div>
 
   <RunSelectorModal {runs} bind:isRunSelectorOpen />
+  <InitInspectionModal bind:isInitInspectionOpen />
 </main>
