@@ -1,17 +1,22 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CodexLeadRunLifecycleError,
   ProjectStateParseError,
   applyCodexLeadInitializationPlan,
   appendJournalEntry,
+  createCodexLeadRun,
   createCodexLeadInitializationPlan,
   createDefaultCodexLeadConfig,
+  getActiveRunState,
   getCodexLeadPaths,
+  getCodexLeadRunPaths,
   inspectCodexLeadProject,
+  listRunStates,
   loadCodexLeadConfig,
   loadJournalEntries,
   loadRunState,
@@ -25,6 +30,8 @@ const tempRoots: string[] = [];
 
 describe("codex-lead project state filesystem", () => {
   afterEach(async () => {
+    vi.useRealTimers();
+
     await Promise.all(
       tempRoots.splice(0).map((tempRoot) =>
         rm(tempRoot, {
@@ -57,6 +64,233 @@ describe("codex-lead project state filesystem", () => {
     await writeCodexLeadConfig(projectRoot, config);
 
     await expect(loadCodexLeadConfig(projectRoot)).resolves.toEqual(config);
+  });
+
+  it("creates a durable run scaffold", async () => {
+    vi.setSystemTime(new Date("2026-06-04T01:23:45.678Z"));
+    const projectRoot = await createTempProjectRoot();
+    const runState = await createCodexLeadRun(projectRoot, {
+      title: "Implement run lifecycle",
+      goal: "Create filesystem-backed run lifecycle APIs.",
+    });
+    const runPaths = getCodexLeadRunPaths(projectRoot, runState.id);
+
+    expect(runState).toEqual({
+      schemaVersion: 1,
+      id: "run_20260604_012345",
+      title: "Implement run lifecycle",
+      status: "active",
+      createdAt: "2026-06-04T01:23:45.678Z",
+      updatedAt: "2026-06-04T01:23:45.678Z",
+      goalPath: runPaths.goalFile,
+      progressPath: runPaths.progressFile,
+      acceptanceCriteriaPath: runPaths.acceptanceCriteriaFile,
+      workers: [],
+    });
+    await expect(loadRunState(projectRoot, runState.id)).resolves.toEqual(
+      runState,
+    );
+    await expect(readFile(runPaths.goalFile, "utf8")).resolves.toBe(
+      "# Goal\n\nCreate filesystem-backed run lifecycle APIs.\n",
+    );
+    await expect(readFile(runPaths.progressFile, "utf8")).resolves.toContain(
+      "No progress recorded yet.",
+    );
+    await expect(
+      readFile(runPaths.acceptanceCriteriaFile, "utf8"),
+    ).resolves.toContain("No acceptance criteria recorded yet.");
+    await expect(readFile(runPaths.notesFile, "utf8")).resolves.toContain(
+      "No notes recorded yet.",
+    );
+    await expect(loadJournalEntries(projectRoot, runState.id)).resolves.toEqual(
+      [
+        {
+          id: "evt_run_20260604_012345_created",
+          timestamp: "2026-06-04T01:23:45.678Z",
+          actor: "lead",
+          type: "run.created",
+          message: "Run created: Implement run lifecycle.",
+          data: {
+            runId: "run_20260604_012345",
+            title: "Implement run lifecycle",
+          },
+        },
+      ],
+    );
+  });
+
+  it("creates a suffixed run id when the timestamp directory already exists", async () => {
+    vi.setSystemTime(new Date("2026-06-04T01:23:45.678Z"));
+    const projectRoot = await createTempProjectRoot();
+
+    await writeRunState(
+      projectRoot,
+      createRunState(projectRoot, {
+        id: "run_20260604_012345",
+        status: "completed",
+      }),
+    );
+
+    const runState = await createCodexLeadRun(projectRoot, {
+      title: "Second run in same second",
+      goal: "Use a collision-safe id.",
+    });
+
+    expect(runState.id).toBe("run_20260604_012345_002");
+  });
+
+  it("lists run states by most recent update first", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const oldestRun = createRunState(projectRoot, {
+      id: "run_20260604_012300",
+      updatedAt: "2026-06-04T01:24:00.000Z",
+      status: "completed",
+    });
+    const newestRun = createRunState(projectRoot, {
+      id: "run_20260604_012500",
+      updatedAt: "2026-06-04T01:26:00.000Z",
+      status: "failed",
+    });
+
+    await writeRunState(projectRoot, oldestRun);
+    await writeRunState(projectRoot, newestRun);
+
+    await expect(listRunStates(projectRoot)).resolves.toEqual([
+      newestRun,
+      oldestRun,
+    ]);
+  });
+
+  it("returns the active run state", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const completedRun = createRunState(projectRoot, {
+      id: "run_20260604_012300",
+      status: "completed",
+    });
+    const activeRun = createRunState(projectRoot, {
+      id: "run_20260604_012500",
+      status: "active",
+    });
+
+    await writeRunState(projectRoot, completedRun);
+    await writeRunState(projectRoot, activeRun);
+
+    await expect(getActiveRunState(projectRoot)).resolves.toEqual(activeRun);
+  });
+
+  it("returns undefined when no active run exists", async () => {
+    const projectRoot = await createTempProjectRoot();
+
+    await expect(getActiveRunState(projectRoot)).resolves.toBeUndefined();
+  });
+
+  it("rejects creating a second active run", async () => {
+    const projectRoot = await createTempProjectRoot();
+
+    await writeRunState(
+      projectRoot,
+      createRunState(projectRoot, {
+        id: "run_20260604_012300",
+        status: "active",
+      }),
+    );
+
+    await expect(
+      createCodexLeadRun(projectRoot, {
+        title: "Blocked run",
+        goal: "This should not be created.",
+      }),
+    ).rejects.toMatchObject({
+      code: "ACTIVE_RUN_EXISTS",
+    });
+  });
+
+  it("rejects creating a run with empty title or goal", async () => {
+    const projectRoot = await createTempProjectRoot();
+
+    await expect(
+      createCodexLeadRun(projectRoot, {
+        title: " ",
+        goal: "Create a run.",
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_RUN_INPUT",
+    });
+    await expect(
+      createCodexLeadRun(projectRoot, {
+        title: "Create a run",
+        goal: "",
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_RUN_INPUT",
+    });
+  });
+
+  it("allows a new active run when existing runs are not active", async () => {
+    const projectRoot = await createTempProjectRoot();
+
+    await writeRunState(
+      projectRoot,
+      createRunState(projectRoot, {
+        id: "run_20260604_012300",
+        status: "completed",
+      }),
+    );
+    await writeRunState(
+      projectRoot,
+      createRunState(projectRoot, {
+        id: "run_20260604_012500",
+        status: "stopped",
+      }),
+    );
+
+    await expect(
+      createCodexLeadRun(projectRoot, {
+        title: "Fresh active run",
+        goal: "Start after closed runs.",
+      }),
+    ).resolves.toMatchObject({
+      status: "active",
+      title: "Fresh active run",
+    });
+  });
+
+  it("fails loudly when listing finds corrupt run state", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const paths = getCodexLeadRunPaths(projectRoot, "run_20260604_012300");
+
+    await mkdir(paths.runDir, { recursive: true });
+    await writeFile(paths.stateFile, "{", "utf8");
+
+    await expect(listRunStates(projectRoot)).rejects.toThrow(
+      ProjectStateParseError,
+    );
+  });
+
+  it("fails loudly when multiple active runs exist", async () => {
+    const projectRoot = await createTempProjectRoot();
+
+    await writeRunState(
+      projectRoot,
+      createRunState(projectRoot, {
+        id: "run_20260604_012300",
+        status: "active",
+      }),
+    );
+    await writeRunState(
+      projectRoot,
+      createRunState(projectRoot, {
+        id: "run_20260604_012500",
+        status: "active",
+      }),
+    );
+
+    await expect(getActiveRunState(projectRoot)).rejects.toThrow(
+      CodexLeadRunLifecycleError,
+    );
+    await expect(getActiveRunState(projectRoot)).rejects.toMatchObject({
+      code: "ACTIVE_RUN_EXISTS",
+    });
   });
 
   it("writes and loads run state", async () => {
@@ -278,21 +512,24 @@ async function createTempProjectRoot(): Promise<string> {
   return projectRoot;
 }
 
-function createRunState(projectRoot: string): RunState {
-  const runRoot = join(
-    projectRoot,
-    ".codex-lead",
-    "runs",
-    "run_20260604_012300",
-  );
+function createRunState(
+  projectRoot: string,
+  options: {
+    readonly id?: string;
+    readonly status?: RunState["status"];
+    readonly updatedAt?: string;
+  } = {},
+): RunState {
+  const runId = options.id ?? "run_20260604_012300";
+  const runRoot = join(projectRoot, ".codex-lead", "runs", runId);
 
   return {
     schemaVersion: 1,
-    id: "run_20260604_012300",
+    id: runId,
     title: "Initialize filesystem state access",
-    status: "active",
+    status: options.status ?? "active",
     createdAt: "2026-06-04T01:23:00.000+03:00",
-    updatedAt: "2026-06-04T01:24:00.000+03:00",
+    updatedAt: options.updatedAt ?? "2026-06-04T01:24:00.000+03:00",
     goalPath: join(runRoot, "goal.md"),
     progressPath: join(runRoot, "progress.md"),
     acceptanceCriteriaPath: join(runRoot, "acceptance-criteria.md"),

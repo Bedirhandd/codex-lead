@@ -34,9 +34,14 @@ export {
 export {
   applyCodexLeadInitializationPlan,
   appendJournalEntry,
+  CodexLeadRunLifecycleError,
+  createCodexLeadRun,
   createCodexLeadInitializationPlan,
+  getActiveRunState,
   getCodexLeadPaths,
+  getCodexLeadRunPaths,
   inspectCodexLeadProject,
+  listRunStates,
   loadCodexLeadConfig,
   loadJournalEntries,
   loadRunState,
@@ -71,4 +76,5 @@ export type {
   CodexLeadInitializationPlan,
   CodexLeadInitializationResult,
   CodexLeadProjectInspection,
+  CreateCodexLeadRunOptions,
 } from "./project-state-fs.js";
