@@ -12,10 +12,9 @@
     "packages/*"
   ],
   "scripts": {
-    "clean": "rimraf packages/*/dist tmp/tsbuildinfo",
+    "clean": "rimraf packages/*/dist packages/*/build packages/*/.svelte-kit tmp/tsbuildinfo",
     "prebuild": "npm run clean",
     "build": "tsc -b --pretty false",
-    "postbuild": "chmod +x packages/cli/dist/bin/codex-lead.js",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

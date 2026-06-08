@@ -7,6 +7,8 @@ export default tseslint.config(
   {
     ignores: [
       "**/dist/**",
+      "**/build/**",
+      "**/.svelte-kit/**",
       "**/coverage/**",
       "**/node_modules/**",
       "**/*.tsbuildinfo",
