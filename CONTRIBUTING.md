@@ -4,15 +4,16 @@
 
 Format: `<type>/<short-description>` — lowercase, hyphens only, no spaces.
 
-| Type        | When to use                                |
-| ----------- | ------------------------------------------ |
-| `feat/`     | New feature                                |
-| `fix/`      | Bug fix                                    |
-| `chore/`    | Dependency updates, config, tooling        |
-| `refactor/` | Code restructuring without behavior change |
-| `docs/`     | Documentation only                         |
-| `test/`     | Adding or fixing tests                     |
-| `hotfix/`   | Urgent production fix                      |
+| Type         | When to use                                           |
+| ------------ | ----------------------------------------------------- |
+| `feat/`      | New feature                                           |
+| `fix/`       | Bug fix                                               |
+| `chore/`     | Dependency updates, config, tooling                   |
+| `refactor/`  | Code restructuring without behavior change            |
+| `docs/`      | Documentation only                                    |
+| `test/`      | Adding or fixing tests                                |
+| `hotfix/`    | Urgent production fix                                 |
+| `prototype/` | Exploratory pre-MVP work not ready for feature review |
 
 Examples:
 
@@ -21,6 +22,7 @@ feat/user-authentication
 fix/login-redirect-loop
 chore/update-dependencies
 refactor/extract-auth-middleware
+prototype/codex-lead
 ```
 
 ## Commit Messages
