@@ -16,14 +16,16 @@
     "dev:web": "npm run dev --workspace @codex-lead/web-ui",
     "build:web": "npm run build --workspace @codex-lead/web-ui",
     "check:web": "npm run check --workspace @codex-lead/web-ui",
+    "sync:web": "npm run sync --workspace @codex-lead/web-ui",
     "prebuild": "npm run clean",
     "build": "tsc -b --pretty false",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "typecheck": "tsc -p tsconfig.typecheck.json --pretty false",
+    "pretest": "npm run sync:web",
     "test": "vitest run",
-    "quality": "npm run build && npm run lint && npm run format:check && npm run typecheck && npm run test",
+    "quality": "npm run build && npm run lint && npm run format:check && npm run check:web && npm run typecheck && npm run test",
     "prepare": "husky"
   },
   "lint-staged": {

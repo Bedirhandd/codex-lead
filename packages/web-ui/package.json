@@ -10,7 +10,8 @@
     "dev": "vite --host 127.0.0.1 --port 50438",
     "build": "vite build",
     "preview": "node build",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    "sync": "svelte-kit sync",
+    "check": "npm run sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.4",
