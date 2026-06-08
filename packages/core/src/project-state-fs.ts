@@ -20,6 +20,7 @@ import {
   serializeJournalEntry,
   serializeRunState,
   type CodexLeadConfig,
+  type CreateCodexLeadConfigOptions,
   type JournalEntry,
   type RunState,
 } from "./project-state.js";
@@ -161,6 +162,7 @@ export function createCodexLeadInitializationPlan(
 
 export async function applyCodexLeadInitializationPlan(
   plan: CodexLeadInitializationPlan,
+  options: CreateCodexLeadConfigOptions = {},
 ): Promise<CodexLeadInitializationResult> {
   const createdPaths: string[] = [];
   let wroteConfig = false;
@@ -175,7 +177,11 @@ export async function applyCodexLeadInitializationPlan(
         createdPaths.push(action.path);
       }
     } else {
-      await writeDefaultConfigIfMissing(action.projectRoot, action.path);
+      await writeDefaultConfigIfMissing(
+        action.projectRoot,
+        action.path,
+        options,
+      );
       wroteConfig = true;
     }
   }
@@ -318,6 +324,7 @@ function withFilePath(filePath: string, error: unknown): unknown {
 async function writeDefaultConfigIfMissing(
   projectRoot: string,
   configFile: string,
+  options: CreateCodexLeadConfigOptions,
 ): Promise<void> {
   await mkdir(dirname(configFile), { recursive: true });
 
@@ -325,7 +332,9 @@ async function writeDefaultConfigIfMissing(
 
   try {
     await handle.writeFile(
-      serializeCodexLeadConfig(createDefaultCodexLeadConfig(projectRoot)),
+      serializeCodexLeadConfig(
+        createDefaultCodexLeadConfig(projectRoot, options),
+      ),
       "utf8",
     );
   } finally {

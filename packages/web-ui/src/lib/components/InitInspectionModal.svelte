@@ -1,5 +1,7 @@
 <script lang="ts">
   import type {
+    InitApplyRequest,
+    InitFeatureChoices,
     InitInspectionErrorResponse,
     InitInspectionResponse
   } from "$lib/init-inspection";
@@ -22,7 +24,9 @@
   let inspectionState: InitInspectionState = {
     status: "idle"
   };
+  let featureChoices: InitFeatureChoices = createDefaultFeatureChoices();
   let hasRequestedInspection = false;
+  let isApplying = false;
 
   $: if (isInitInspectionOpen && !hasRequestedInspection) {
     hasRequestedInspection = true;
@@ -34,6 +38,8 @@
     inspectionState = {
       status: "idle"
     };
+    featureChoices = createDefaultFeatureChoices();
+    isApplying = false;
   }
 
   $: checklistItems =
@@ -90,6 +96,7 @@
         status: "success",
         data: payload as InitInspectionResponse
       };
+      syncFeatureChoices(payload as InitInspectionResponse);
     } catch (error) {
       inspectionState = {
         status: "error",
@@ -106,12 +113,110 @@
     isInitInspectionOpen = false;
   }
 
+  async function applyInitialization() {
+    if (inspectionState.status !== "success" || inspectionState.data.actions.length === 0) {
+      return;
+    }
+
+    isApplying = true;
+
+    try {
+      const requestBody = {
+        features: featureChoices
+      } satisfies InitApplyRequest;
+      const response = await fetch("/api/init/inspect", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+      const payload = (await response.json()) as
+        | InitInspectionResponse
+        | InitInspectionErrorResponse;
+
+      if (!response.ok) {
+        inspectionState = {
+          status: "error",
+          error: payload as InitInspectionErrorResponse
+        };
+        return;
+      }
+
+      inspectionState = {
+        status: "success",
+        data: payload as InitInspectionResponse
+      };
+      syncFeatureChoices(payload as InitInspectionResponse);
+    } catch (error) {
+      inspectionState = {
+        status: "error",
+        error: {
+          error: "init-inspection-failed",
+          message: error instanceof Error ? error.message : "Request failed.",
+          recommendation: "Check the server logs, then run /init again."
+        }
+      };
+    } finally {
+      isApplying = false;
+    }
+  }
+
+  function createDefaultFeatureChoices(): InitFeatureChoices {
+    return {
+      reviewLoop: true,
+      localDocs: true,
+      codeStandards: true,
+      codeQuality: true
+    };
+  }
+
+  function syncFeatureChoices(response: InitInspectionResponse) {
+    if (!response.configSummary) {
+      return;
+    }
+
+    featureChoices = response.configSummary.features;
+  }
+
+  function setFeatureChoice(key: keyof InitFeatureChoices, enabled: boolean) {
+    featureChoices = {
+      ...featureChoices,
+      [key]: enabled
+    };
+  }
+
   function actionLabel(type: string) {
     if (type === "create-directory") {
       return "mkdir";
     }
 
     return "write config";
+  }
+
+  function featureRows() {
+    return [
+      {
+        key: "reviewLoop",
+        label: "Review Loop",
+        description: "Run native review and repair cycles before handoff."
+      },
+      {
+        key: "localDocs",
+        label: "Local Docs",
+        description: "Use project-local framework and library documentation."
+      },
+      {
+        key: "codeStandards",
+        label: "Code Standards",
+        description: "Load local engineering conventions during worker planning."
+      },
+      {
+        key: "codeQuality",
+        label: "Code Quality",
+        description: "Track project quality commands for validation gates."
+      }
+    ] as const;
   }
 </script>
 
@@ -140,8 +245,8 @@
             Codex Lead Project Setup
           </h2>
           <p class="mt-3 max-w-2xl text-sm leading-6 text-ink/55">
-            Read-only inspection of the local scaffold contract. No directories or config files
-            will be written from this view.
+            Inspect the local scaffold contract, choose feature defaults, and create the
+            project setup only when you apply.
           </p>
         </div>
 
@@ -196,15 +301,16 @@
               {inspectionState.error.recommendation}
             </p>
           </section>
-        {:else}
+        {:else if inspectionState.status === "success"}
+          {@const inspection = inspectionState.data}
           <section class="grid border-b border-white/10 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <aside class="border-b border-white/10 px-7 py-6 lg:border-r lg:border-b-0">
               <p class="font-mono text-xs font-medium uppercase text-ink/45">State</p>
               <p class="mt-3 text-4xl font-semibold">
-                {inspectionState.data.alreadyInitialized ? "Ready" : "Needs Init"}
+                {inspection.alreadyInitialized ? "Ready" : "Needs Init"}
               </p>
               <p class="mt-4 text-sm leading-6 text-ink/55">
-                {inspectionState.data.alreadyInitialized
+                {inspection.alreadyInitialized
                   ? "The project scaffold already matches the current contract."
                   : "The scaffold is missing required local project files."}
               </p>
@@ -213,17 +319,19 @@
                 <div>
                   <dt class="font-mono text-xs uppercase text-ink/35">Actions</dt>
                   <dd class="mt-1 text-2xl font-semibold">
-                    {inspectionState.data.actions.length}
+                    {inspection.actions.length}
                   </dd>
                 </div>
                 <div>
                   <dt class="font-mono text-xs uppercase text-ink/35">Mode</dt>
-                  <dd class="mt-1 font-mono text-sm text-ink/70">read-only</dd>
+                  <dd class="mt-1 font-mono text-sm text-ink/70">
+                    {inspection.actions.length > 0 ? "setup" : "read-only"}
+                  </dd>
                 </div>
                 <div>
                   <dt class="font-mono text-xs uppercase text-ink/35">Root Source</dt>
                   <dd class="mt-1 break-all font-mono text-sm text-ink/70">
-                    {inspectionState.data.projectRoot.source}
+                    {inspection.projectRoot.source}
                   </dd>
                 </div>
               </dl>
@@ -235,7 +343,7 @@
                   Project Root
                 </p>
                 <p class="mt-2 break-all font-mono text-sm text-ink/70">
-                  {inspectionState.data.projectRoot.path}
+                  {inspection.projectRoot.path}
                 </p>
               </div>
 
@@ -267,6 +375,57 @@
             </div>
           </section>
 
+          {#if inspection.actions.length > 0}
+            <section class="border-b border-white/10 px-7 py-6">
+              <div class="flex items-end justify-between gap-6 border-b border-white/10 pb-4">
+                <div>
+                  <p class="font-mono text-xs font-medium uppercase text-ink/45">
+                    Configuration
+                  </p>
+                  <p class="mt-2 text-sm text-ink/55">
+                    Feature defaults for the config.json that will be written by apply.
+                  </p>
+                </div>
+                <p class="font-mono text-xs text-ink/45">defaults on</p>
+              </div>
+
+              <div>
+                {#each featureRows() as feature}
+                  <label
+                    class="grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-5 border-b border-white/10 py-4"
+                  >
+                    <span class="min-w-0">
+                      <span class="block font-semibold">{feature.label}</span>
+                      <span class="mt-1 block text-sm leading-6 text-ink/50">
+                        {feature.description}
+                      </span>
+                    </span>
+                    <span class="relative inline-flex h-8 w-14 items-center">
+                      <input
+                        class="peer sr-only"
+                        type="checkbox"
+                        checked={featureChoices[feature.key]}
+                        disabled={isApplying}
+                        onchange={(event) => {
+                          setFeatureChoice(
+                            feature.key,
+                            event.currentTarget.checked
+                          );
+                        }}
+                      />
+                      <span
+                        class="h-7 w-12 rounded-full border border-white/15 bg-white/[0.05] transition peer-checked:border-white peer-checked:bg-white peer-disabled:opacity-50"
+                      ></span>
+                      <span
+                        class="absolute left-1 size-5 rounded-full bg-white transition peer-checked:translate-x-5 peer-checked:bg-ash peer-disabled:opacity-50"
+                      ></span>
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            </section>
+          {/if}
+
           <section class="px-7 py-6">
             <div class="flex items-end justify-between gap-6 border-b border-white/10 pb-4">
               <div>
@@ -274,18 +433,18 @@
                   Proposed Init Plan
                 </p>
                 <p class="mt-2 text-sm text-ink/55">
-                  {inspectionState.data.alreadyInitialized
+                  {inspection.alreadyInitialized
                     ? "No filesystem changes are required."
-                    : "Preview only. These operations are not executable in this modal."}
+                    : "These operations will run when you create the project scaffold."}
                 </p>
               </div>
               <p class="font-mono text-xs text-ink/45">
-                {inspectionState.data.actions.length} action(s)
+                {inspection.actions.length} action(s)
               </p>
             </div>
-            {#if inspectionState.data.actions.length > 0}
+            {#if inspection.actions.length > 0}
               <div>
-                {#each inspectionState.data.actions as action, index}
+                {#each inspection.actions as action, index}
                   <div
                     class="grid grid-cols-[3rem_8rem_minmax(0,1fr)] items-start gap-4 border-b border-white/10 py-4"
                   >
@@ -302,7 +461,8 @@
             {/if}
           </section>
 
-          {#if inspectionState.data.configSummary}
+          {#if inspection.configSummary}
+            {@const configSummary = inspection.configSummary}
             <section class="border-t border-white/10 px-7 py-6">
               <p class="font-mono text-xs font-medium uppercase text-ink/45">
                 Config Summary
@@ -312,17 +472,17 @@
               >
                 <p class="border-b border-white/10 py-3 text-ink/45">schemaVersion</p>
                 <p class="border-b border-white/10 py-3 text-ink/75">
-                  {inspectionState.data.configSummary.schemaVersion}
+                  {configSummary.schemaVersion}
                 </p>
                 <p class="border-b border-white/10 py-3 text-ink/45">
                   workerPromptingLanguage
                 </p>
                 <p class="border-b border-white/10 py-3 text-ink/75">
-                  {inspectionState.data.configSummary.workerPromptingLanguage}
+                  {configSummary.workerPromptingLanguage}
                 </p>
                 <p class="py-3 text-ink/45">webPort</p>
                 <p class="py-3 text-ink/75">
-                  {inspectionState.data.configSummary.webPort}
+                  {configSummary.webPort}
                 </p>
               </div>
             </section>
@@ -331,13 +491,30 @@
       </div>
 
       <footer class="flex items-center justify-between gap-4 border-t border-white/10 bg-[#0d0d0d] px-7 py-5">
-        <p class="text-sm text-ink/45">Read-only inspection. Apply flow is not enabled yet.</p>
-        <button
-          class="rounded-md border border-white/10 bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-ash transition hover:bg-paper hover:text-ink"
-          onclick={closeModal}
-        >
-          Close
-        </button>
+        <p class="text-sm text-ink/45">
+          {#if inspectionState.status === "success" && inspectionState.data.actions.length > 0}
+            This will create local project files under .codex-lead.
+          {:else}
+            Project scaffold is ready or inspection is blocked.
+          {/if}
+        </p>
+        <div class="flex items-center gap-3">
+          <button
+            class="rounded-md border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-ink transition hover:bg-white/10"
+            onclick={closeModal}
+          >
+            Close
+          </button>
+          {#if inspectionState.status === "success" && inspectionState.data.actions.length > 0}
+            <button
+              class="rounded-md border border-white bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.12em] text-ash transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isApplying}
+              onclick={applyInitialization}
+            >
+              {isApplying ? "Creating..." : "Create Project Scaffold"}
+            </button>
+          {/if}
+        </div>
       </footer>
     </div>
   </div>

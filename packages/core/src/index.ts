@@ -47,8 +47,10 @@ export {
 export type {
   AgentDefaults,
   CodexLeadConfig,
+  CodexLeadConfigFeatureOptions,
   CodeQualityConfig,
   CodeStandardsConfig,
+  CreateCodexLeadConfigOptions,
   JournalActor,
   JournalEntry,
   JsonPrimitive,

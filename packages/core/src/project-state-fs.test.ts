@@ -148,6 +148,39 @@ describe("codex-lead project state filesystem", () => {
     );
   });
 
+  it("applies initialization with selected config feature flags", async () => {
+    const projectRoot = await createTempProjectRoot();
+    const plan = createCodexLeadInitializationPlan(
+      await inspectCodexLeadProject(projectRoot),
+    );
+
+    await applyCodexLeadInitializationPlan(plan, {
+      features: {
+        reviewLoop: false,
+        localDocs: true,
+        codeStandards: false,
+        codeQuality: false,
+      },
+    });
+
+    await expect(loadCodexLeadConfig(projectRoot)).resolves.toMatchObject({
+      features: {
+        reviewLoop: {
+          enabled: false,
+        },
+        localDocs: {
+          enabled: true,
+        },
+        codeStandards: {
+          enabled: false,
+        },
+        codeQuality: {
+          enabled: false,
+        },
+      },
+    });
+  });
+
   it("returns an empty initialization plan for an initialized project", async () => {
     const projectRoot = await createTempProjectRoot();
     const initialPlan = createCodexLeadInitializationPlan(

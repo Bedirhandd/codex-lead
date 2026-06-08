@@ -51,6 +51,32 @@ describe("codex-lead project state", () => {
     ).toEqual(config);
   });
 
+  it("creates default project config with feature overrides", () => {
+    const config = createDefaultCodexLeadConfig("/repo", {
+      features: {
+        reviewLoop: false,
+        localDocs: false,
+        codeStandards: true,
+        codeQuality: false,
+      },
+    });
+
+    expect(config.features).toMatchObject({
+      reviewLoop: {
+        enabled: false,
+      },
+      localDocs: {
+        enabled: false,
+      },
+      codeStandards: {
+        enabled: true,
+      },
+      codeQuality: {
+        enabled: false,
+      },
+    });
+  });
+
   it("parses and serializes run state", () => {
     const runState: RunState = {
       schemaVersion: 1,

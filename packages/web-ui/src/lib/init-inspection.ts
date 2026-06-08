@@ -12,6 +12,14 @@ export type InitInspectionConfigSummary = {
   readonly schemaVersion: number;
   readonly workerPromptingLanguage: string;
   readonly webPort: number;
+  readonly features: InitFeatureChoices;
+};
+
+export type InitFeatureChoices = {
+  readonly reviewLoop: boolean;
+  readonly localDocs: boolean;
+  readonly codeStandards: boolean;
+  readonly codeQuality: boolean;
 };
 
 export type InitInspectionResponse = {
@@ -30,8 +38,16 @@ export type InitInspectionResponse = {
 };
 
 export type InitInspectionErrorResponse = {
-  readonly error: "invalid-config" | "init-inspection-failed";
+  readonly error:
+    | "invalid-config"
+    | "init-apply-conflict"
+    | "init-inspection-failed"
+    | "invalid-request";
   readonly message: string;
   readonly path?: string;
   readonly recommendation: string;
+};
+
+export type InitApplyRequest = {
+  readonly features: InitFeatureChoices;
 };

@@ -100,6 +100,17 @@ export type CodexLeadConfig = {
   };
 };
 
+export type CodexLeadConfigFeatureOptions = {
+  readonly reviewLoop?: boolean;
+  readonly localDocs?: boolean;
+  readonly codeStandards?: boolean;
+  readonly codeQuality?: boolean;
+};
+
+export type CreateCodexLeadConfigOptions = {
+  readonly features?: CodexLeadConfigFeatureOptions;
+};
+
 export type WorkerRunState = {
   readonly id: string;
   readonly kind: WorkerKind;
@@ -154,8 +165,10 @@ export class ProjectStateParseError extends Error {
 
 export function createDefaultCodexLeadConfig(
   projectRoot: string,
+  options: CreateCodexLeadConfigOptions = {},
 ): CodexLeadConfig {
   const codexLeadRoot = `${projectRoot}/.codex-lead`;
+  const featureOptions = options.features ?? {};
 
   return {
     schemaVersion: CODEX_LEAD_SCHEMA_VERSION,
@@ -190,19 +203,19 @@ export function createDefaultCodexLeadConfig(
     },
     features: {
       reviewLoop: {
-        enabled: true,
+        enabled: featureOptions.reviewLoop ?? true,
         maxIterations: 10,
       },
       localDocs: {
-        enabled: true,
+        enabled: featureOptions.localDocs ?? true,
         docsPath: `${codexLeadRoot}/docs`,
       },
       codeStandards: {
-        enabled: true,
+        enabled: featureOptions.codeStandards ?? true,
         standardsPath: `${codexLeadRoot}/standards`,
       },
       codeQuality: {
-        enabled: true,
+        enabled: featureOptions.codeQuality ?? true,
         commands: {},
       },
     },
